@@ -1,7 +1,6 @@
 name: build
 on:
   push:
-  pull_request:
   workflow_dispatch:
 
 jobs:
@@ -10,11 +9,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Show repo files
+      - name: Unpack the source zip (if it is in the repo)
         run: |
-          echo "Java files found:"
-          find . -name "*.java" | wc -l
-          find src -maxdepth 4 -type d | head -30
+          if [ -f daot-limbs-source-updated.zip ]; then
+            unzip -o daot-limbs-source-updated.zip -x ".github/*"
+          fi
+          echo "Java files:"; find . -name "*.java" | wc -l
+
+      - name: Fix plugin repositories and Loom version
+        run: |
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  maven { url = 'https://maven.fabricmc.net/' }
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          EOF
+          sed -i "s/1.8-SNAPSHOT/1.8.13/" build.gradle
+          cat settings.gradle
+          head -3 build.gradle
 
       - uses: actions/setup-java@v5
         with:
@@ -31,7 +46,7 @@ jobs:
       - name: Show jar contents
         run: |
           ls -la build/libs
-          unzip -l build/libs/daot-limbs-1.0.0.jar | tail -5
+          unzip -l build/libs/daot-limbs-1.0.0.jar | tail -3
 
       - uses: actions/upload-artifact@v4
         with:
